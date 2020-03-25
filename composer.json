@@ -1,0 +1,13 @@
+{
+    "name": "dusank/json",
+    "type": "library",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "DusanKasan\\JSON\\": "src/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0"
+    }
+}
