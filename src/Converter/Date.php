@@ -10,12 +10,15 @@ class Date implements ConverterInterface
 {
     /**
      * @param DateTime $value
-     * @param ReflectionType $type
      * @param array $params
      * @return string
      */
-    public function encode($value, ReflectionType $type, array $params = []): string
+    public function encode($value, array $params = [])
     {
+        if ($value === null) {
+            return null;
+        }
+
         return $value->format($params['format'] ?? 'Y-m-d');
     }
 

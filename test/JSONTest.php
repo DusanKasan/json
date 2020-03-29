@@ -2,7 +2,6 @@
 
 namespace DusanKasan\JSON;
 
-
 use DateTime;
 use PHPUnit\Framework\TestCase;
 
@@ -18,6 +17,8 @@ class JSONTest extends TestCase
         $this->assertEquals(null, $a->d);
         $this->assertEquals(123, $a->e);
         $this->assertEquals('2000-01-01', $a->f->format('Y-m-d'));
+
+        var_dump(JSON::encode($a));
     }
 }
 
@@ -29,6 +30,9 @@ class A
      * @JSON::Converter::StringRepresentation({"true":"1", "false":"0"})
      */
     public bool $c;
+    /**
+     * @JSON::OmitEmpty
+     */
     public ?bool $d;
     /**
      * @JSON::Converter::StringRepresentation()
