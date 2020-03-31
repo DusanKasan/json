@@ -1,14 +1,13 @@
 <?php
 
-namespace DusanKasan\JSON\Converter;
+namespace DusanKasan\JSON\Doc\Converter;
 
-use DusanKasan\JSON\ConverterInterface;
 use Exception;
 use ReflectionType;
 
 class StringRepresentation implements ConverterInterface
 {
-    public function encode($value, array $params = [])
+    public function serialize($value, array $params = [])
     {
         if ($value === null) {
             return null;
@@ -17,7 +16,7 @@ class StringRepresentation implements ConverterInterface
         return (string)$value;
     }
 
-    public function decode($value, ReflectionType $type, array $params = [])
+    public function deserialize($value, ReflectionType $type, array $params = [])
     {
         switch ($type->getName()) {
             case 'int':

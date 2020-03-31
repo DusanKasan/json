@@ -1,8 +1,7 @@
 <?php
 
-namespace DusanKasan\JSON\Converter;
+namespace DusanKasan\JSON\Doc\Converter;
 
-use DusanKasan\JSON\ConverterInterface;
 use ReflectionType;
 
 class DateTime implements ConverterInterface
@@ -10,9 +9,9 @@ class DateTime implements ConverterInterface
     /**
      * @param DateTime $value
      * @param array $params
-     * @return string
+     * @return StringRepresentation
      */
-    public function encode($value, array $params = [])
+    public function serialize($value, array $params = [])
     {
         if ($value === null) {
             return null;
@@ -21,7 +20,7 @@ class DateTime implements ConverterInterface
         return $value->format($params['format'] ?? 'Y-m-d H:i:s');
     }
 
-    public function decode($value, ReflectionType $type, array $params = []): \DateTime
+    public function deserialize($value, ReflectionType $type, array $params = []): \DateTime
     {
         return \DateTime::createFromFormat($params['format'] ?? 'Y-m-d H:i:s', $value);
     }

@@ -3,22 +3,17 @@
 namespace DusanKasan\JSON;
 
 use DateTime;
+use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 
 class JSONTest extends TestCase
 {
     function testDecode()
     {
-        $a =  new A();
-        JSON::decode('{"a": "asd", "b": {"a": "qwe"}, "c":"1", "e": "123", "f": "2000-01-01"}', $a);
-        $this->assertEquals('asd', $a->a);
-        $this->assertEquals('qwe', $a->b->a);
-        $this->assertEquals(true, $a->c);
-        $this->assertEquals(null, $a->d);
-        $this->assertEquals(123, $a->e);
-        $this->assertEquals('2000-01-01', $a->f->format('Y-m-d'));
-
-        var_dump(JSON::encode($a));
+        $input = '{"a": "asd", "b": {"a": "qwe"}, "c":"1", "e": "123", "f": "2000-01-01", "g": "2000-01-01", "h": [{"a": "qwe1"}]}';
+        $a = new A();
+        JSON::deserialize($input, $a);
+        $this->assertJsonStringEqualsJsonString($input, JSON::serialize($a));
     }
 }
 
@@ -27,24 +22,49 @@ class A
     public string $a;
     public ?B $b;
     /**
-     * @JSON::Converter::StringRepresentation({"true":"1", "false":"0"})
+     * @json::convert::string({"true":"1", "false": "0"})
      */
     public bool $c;
     /**
-     * @JSON::OmitEmpty
+     * @json::omitnull
      */
     public ?bool $d;
     /**
-     * @JSON::Converter::StringRepresentation()
+     * @json::convert::string()
      */
     public ?int $e;
     /**
-     * @JSON::Converter::DateTime({"format": "Y-m-d"})
+     * @json::convert::DateTime({"format": "Y-m-d"})
      */
     public DateTime $f;
+    public Date $g;
+    /**
+     * @var \DusanKasan\JSON\B[]
+     */
+    public array $h;
 }
 
 class B
 {
     public string $a;
+}
+
+class Date implements \JsonSerializable, JsonDeserializable
+{
+    private DateTime $datetime;
+
+    public function __construct(string $date)
+    {
+        $this->datetime = DateTime::createFromFormat('Y-m-d', $date);
+    }
+
+    public function jsonDeserialize($value)
+    {
+        $this->datetime = DateTime::createFromFormat('Y-m-d', $value);
+    }
+
+    public function jsonSerialize()
+    {
+        return $this->datetime->format('Y-m-d');
+    }
 }

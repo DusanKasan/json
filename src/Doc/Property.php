@@ -2,15 +2,16 @@
 
 namespace DusanKasan\JSON\Doc;
 
-use DusanKasan\JSON\Converter\Date;
-use DusanKasan\JSON\Converter\DateTime;
-use DusanKasan\JSON\Converter\StringRepresentation;
-use DusanKasan\JSON\ConverterInterface;
+use DusanKasan\JSON\Doc\Converter\ConverterInterface;
+use DusanKasan\JSON\Doc\Converter\Date;
+use DusanKasan\JSON\Doc\Converter\DateTime;
+use DusanKasan\JSON\Doc\Converter\StringRepresentation;
 use ReflectionProperty;
 
 class Property
 {
     public bool $omitEmpty = false;
+    public ?string $var = null;
     private ?ConverterInterface $converter = null;
     private array $converterParams;
     private ReflectionProperty $property;
@@ -27,18 +28,23 @@ class Property
             $annotationParts = explode('(', $annotation);
             $annotationName = $annotationParts[0];
 
-            if (strpos($annotationName, "JSON::OmitEmpty") === 0) {
+            if (strpos($annotationName, "json::omitnull") === 0) {
                 $this->omitEmpty = true;
                 continue;
             }
 
-            if (strpos($annotationName, "JSON::Converter::") !== 0) {
+            if (strpos($annotationName, "var ") === 0) {
+                $this->var = explode(' ', $annotationName)[1];
+            }
+
+            if (strpos($annotationName, "json::convert::") !== 0) {
                 continue;
             }
 
-            $converterName = substr($annotationName, 17);
+            $converterName = substr($annotationName, 15);
             $converterParams = rtrim(join('(', array_slice($annotationParts, 1)), ')');
             $converterParams = json_decode($converterParams === '' ? '[]' : $converterParams, true);
+
 
             $converters = self::availableConverters();
             if (!array_key_exists($converterName, $converters)) {
@@ -56,27 +62,27 @@ class Property
     protected static function availableConverters(): array
     {
         return [
-            'StringRepresentation' => new StringRepresentation(),
+            'string' => new StringRepresentation(),
             'DateTime' => new DateTime(),
             'Date' => new Date(),
         ];
     }
 
-    public function encode($value)
+    public function serialize($value)
     {
         if ($this->converter === null) {
             return $value;
         }
 
-        return $this->converter->encode($value, $this->converterParams);
+        return $this->converter->serialize($value, $this->converterParams);
     }
 
-    public function decode($value)
+    public function deserialize($value)
     {
         if ($this->converter === null) {
             return $value;
         }
 
-        return $this->converter->decode($value, $this->property->getType(), $this->converterParams);
+        return $this->converter->deserialize($value, $this->property->getType(), $this->converterParams);
     }
 }

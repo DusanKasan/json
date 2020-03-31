@@ -4,6 +4,7 @@ namespace DusanKasan\JSON;
 
 use DateTime;
 use DusanKasan\JSON\Doc\Property;
+use DusanKasan\JSON\Type\Type;
 use Exception;
 use ReflectionClass;
 use ReflectionProperty;
@@ -12,12 +13,12 @@ use stdClass;
 
 class JSON
 {
-    public static function encode($value): string
+    public static function serialize($value): string
     {
-        return json_encode(self::encodeValue($value));
+        return json_encode(self::serializeValue($value));
     }
 
-    protected static function encodeValue($value)
+    protected static function serializeValue($value)
     {
         switch ($type = gettype($value)) {
             case 'boolean':
@@ -26,105 +27,134 @@ class JSON
             case 'string':
                 return $value;
             case 'array':
-                // TODO
-                return null;
+                return array_map(fn ($v) => self::serializeValue($v), $value);
             case 'object':
-                return self::encodeObject($value);
+                return self::serializeObject($value);
             default:
-                throw new Exception("unable to encode type: $type");
+                throw new Exception("unable to serialize type: $type");
         }
     }
 
-    protected static function encodeObject(object $value)
+    protected static function serializeObject(object $value)
     {
+        if ($value instanceof \JsonSerializable) {
+            return $value->jsonSerialize();
+        }
+
         $result = [];
 
         $class = new ReflectionClass($value);
         foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
             $name = $prop->getName();
             $doc = new Property($prop);
-            $encoded = $doc->encode($value->$name);
-            if ($encoded == null && $doc->omitEmpty) {
+            $serializeled = $doc->serialize($value->$name);
+            if ($serializeled == null && $doc->omitEmpty) {
                 continue;
             }
 
-            $result[$name] = $encoded;
+            $result[$name] = $serializeled;
         }
 
         return $result;
     }
 
-    public static function decode(string $json, object $object)
+    public static function deserialize(string $json, object $object)
     {
         $data = json_decode($json);
-        $obj = self::decodeClass($data, get_class($object));
+        $obj = self::deserializeClass($data, get_class($object));
         foreach ($obj as $prop => $val) {
             $object->$prop = $val;
         }
     }
 
-    protected static function decodeClass(stdClass $value, string $className): object
+    protected static function deserializeClass($value, string $className): object
     {
         $class = new ReflectionClass($className);
         $object = $class->newInstanceWithoutConstructor();
+
+        if ($class->implementsInterface(JsonDeserializable::class)) {
+            $object->jsonDeserialize($value);
+            return $object;
+        }
+
+        if (!is_object($value) || !$value instanceof stdClass) {
+            throw new Exception("partially deserialized data must be in the form of stdClass, $value given");
+        }
+
         foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
             $type = $prop->getType();
             $name = $prop->getName();
             $doc = new Property($prop);
-            $val = $doc->decode($value->$name ?? null);
+            $val = $doc->deserialize($value->$name ?? null);
             if ($val === null && !$type->allowsNull()) {
                 throw new Exception("property $name of class $className does not allow null values");
             }
 
-            $object->$name = self::decodeType($val, $type);
+            $object->$name = self::deserializeType($val, Type::fromReflectionType($type, $doc->var));
         }
-
 
         return $object;
     }
 
-    protected static function decodeType($value, ReflectionType $type)
+    protected static function deserializeArray(array $value, ?Type $itemType)
+    {
+        if (!is_array($value)) {
+            throw new Exception("unable to deserialize $value into array");
+        }
+
+        if ($itemType === null) {
+            return $value;
+        }
+
+        return array_map(function ($item) use ($itemType) {
+            return self::deserializeType($item, $itemType);
+        }, $value);
+    }
+
+    protected static function deserializeType($value, Type $type)
     {
         if ($type === null) {
             return $value;
         }
 
         if ($value === null) {
-            if ($type->allowsNull()) {
+            if ($type->allowsNull) {
                 return $value;
             }
 
             throw new Exception("type does not allow null values");
         }
 
-        if (!$type->isBuiltin()) {
-            if ($type->getName() === get_class($value)) {
-                return $value;
-            }
-
-            if ($type->getName() === DateTime::class) {
-                if (is_string($value)) {
-                    return DateTime::createFromFormat('Y-m-d H:i:s', $value);
-                }
-
-                throw new Exception("unable to create datetime from " . gettype($value) . " provided");
-            }
-
-            if (!$value instanceof stdClass) {
-                throw new Exception("type accepts stdClass, " . gettype($value) . " provided");
-            }
-
-            return self::decodeClass($value, $type->getName());
+        if ($type->isArray()) {
+            return self::deserializeArray($value, $type->arrayItemsType());
         }
 
-        switch ($type->getName()) {
+        switch ($type->name) {
+            case 'resource':
+            case 'object':
+            case 'callable':
+            case 'iterable':
+                throw new Exception("non-deserializable type: {$type->name}");
             case 'string':
             case 'bool':
             case 'int':
             case 'float':
                 return $value;
             default:
-                throw new Exception("unknown type: {$type->getName()}");
+                if (is_object($value) && $type->name === get_class($value)) {
+                    return $value;
+                }
+
+                if ($type->name === DateTime::class) {
+                    if (is_string($value)) {
+                        return DateTime::createFromFormat('Y-m-d H:i:s', $value);
+                    }
+
+                    throw new Exception("unable to create datetime from " . gettype($value) . " provided");
+                }
+
+                return self::deserializeClass($value, $type->name);
         }
     }
 }
+
