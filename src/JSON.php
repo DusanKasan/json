@@ -8,7 +8,6 @@ use DusanKasan\JSON\Type\Type;
 use Exception;
 use ReflectionClass;
 use ReflectionProperty;
-use ReflectionType;
 use stdClass;
 
 class JSON
@@ -96,21 +95,6 @@ class JSON
         return $object;
     }
 
-    protected static function deserializeArray(array $value, ?Type $itemType)
-    {
-        if (!is_array($value)) {
-            throw new Exception("unable to deserialize $value into array");
-        }
-
-        if ($itemType === null) {
-            return $value;
-        }
-
-        return array_map(function ($item) use ($itemType) {
-            return self::deserializeType($item, $itemType);
-        }, $value);
-    }
-
     protected static function deserializeType($value, Type $type)
     {
         if ($type === null) {
@@ -123,6 +107,10 @@ class JSON
             }
 
             throw new Exception("type does not allow null values");
+        }
+
+        if (is_object($value) && $type->name === get_class($value)) {
+            return $value;
         }
 
         if ($type->isArray()) {
@@ -140,21 +128,26 @@ class JSON
             case 'int':
             case 'float':
                 return $value;
+            case DateTime::class:
+                return DateTime::createFromFormat('Y-m-d H:i:s', $value);
             default:
-                if (is_object($value) && $type->name === get_class($value)) {
-                    return $value;
-                }
-
-                if ($type->name === DateTime::class) {
-                    if (is_string($value)) {
-                        return DateTime::createFromFormat('Y-m-d H:i:s', $value);
-                    }
-
-                    throw new Exception("unable to create datetime from " . gettype($value) . " provided");
-                }
-
                 return self::deserializeClass($value, $type->name);
         }
+    }
+
+    protected static function deserializeArray(array $value, ?Type $itemType)
+    {
+        if (!is_array($value)) {
+            throw new Exception("unable to deserialize $value into array");
+        }
+
+        if ($itemType === null) {
+            return $value;
+        }
+
+        return array_map(function ($item) use ($itemType) {
+            return self::deserializeType($item, $itemType);
+        }, $value);
     }
 }
 
