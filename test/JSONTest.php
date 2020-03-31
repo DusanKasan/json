@@ -1,10 +1,13 @@
 <?php
 
-namespace DusanKasan\JSON;
+namespace DusanKasan\JSON\Test;
 
 use DateTime;
 use DateTimeZone;
+use DusanKasan\JSON\JSON;
+use DusanKasan\JSON\JsonDeserializable;
 use PHPUnit\Framework\TestCase;
+use function DusanKasan\JSON\AAA;
 
 class JSONTest extends TestCase
 {
@@ -39,7 +42,7 @@ class A
     public DateTime $f;
     public Date $g;
     /**
-     * @var \DusanKasan\JSON\B[]
+     * @var \DusanKasan\JSON\Test\B[]
      */
     public array $h;
 }

@@ -10,6 +10,8 @@ use ReflectionClass;
 use ReflectionProperty;
 use stdClass;
 
+function AAA(){}
+
 class JSON
 {
     public static function serialize($value): string
