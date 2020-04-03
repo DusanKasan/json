@@ -10,7 +10,9 @@ use ReflectionClass;
 use ReflectionProperty;
 use stdClass;
 
-function AAA(){}
+function AAA()
+{
+}
 
 class JSON
 {
@@ -25,6 +27,7 @@ class JSON
             case 'boolean':
             case 'integer':
             case 'double':
+            case 'float':
             case 'string':
                 return $value;
             case 'array':
@@ -53,7 +56,7 @@ class JSON
                 continue;
             }
 
-            $result[$name] = $serializeled;
+            $result[$doc->jsonName] = $serializeled;
         }
 
         return $result;
@@ -82,16 +85,14 @@ class JSON
             throw new Exception("partially deserialized data must be in the form of stdClass, $value given");
         }
 
-        foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $prop) {
-            $type = $prop->getType();
-            $name = $prop->getName();
-            $doc = new Property($prop);
-            $val = $doc->deserialize($value->$name ?? null);
-            if ($val === null && !$type->allowsNull()) {
-                throw new Exception("property $name of class $className does not allow null values");
+        foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $p) {
+            $prop = new Property($p);
+            $val = $prop->deserialize($value->{$prop->jsonName} ?? null);
+            if ($val === null && !$prop->type->allowsNull()) {
+                throw new Exception("property $prop->name of class $className does not allow null values");
             }
 
-            $object->$name = self::deserializeType($val, Type::fromReflectionType($type, $doc->var));
+            $object->{$prop->name} = self::deserializeType($val, Type::fromReflectionType($prop->type, $prop->var));
         }
 
         return $object;

@@ -15,10 +15,16 @@ class Property
     private ?ConverterInterface $converter = null;
     private array $converterParams;
     private ReflectionProperty $property;
+    public string $jsonName;
+    public string $name;
+    public \ReflectionType $type;
 
     public function __construct(ReflectionProperty $prop)
     {
         $this->property = $prop;
+        $this->name = $prop->getName();
+        $this->type = $prop->getType();
+        $this->jsonName = $prop->getName();
 
         $doc = $prop->getDocComment();
         $docParts = explode('* @', $doc);
@@ -30,6 +36,11 @@ class Property
 
             if (strpos($annotationName, "json::omitnull") === 0) {
                 $this->omitEmpty = true;
+                continue;
+            }
+
+            if (strpos($annotationName, "json::name") === 0) {
+                $this->jsonName = substr($annotation, 12, strlen($annotation) - 14);
                 continue;
             }
 
